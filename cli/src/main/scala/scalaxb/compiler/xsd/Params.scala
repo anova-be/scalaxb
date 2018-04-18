@@ -63,18 +63,33 @@ trait Params extends Lookup {
     global: Boolean,
     qualified: Boolean,
     attribute: Boolean) {
-    
+
     def baseTypeName: String = buildTypeName(typeSymbol)
-    
+
     def singleTypeName: String =
       if (nillable) "Option[" + baseTypeName + "]"
       else baseTypeName
-    
+
     def typeName: String = cardinality match {
-      case Single   => singleTypeName
+      case Single => singleTypeName
       case Optional => "Option[" + singleTypeName + "]"
       case Multiple => "Seq[" + singleTypeName + "]"
-    }      
+    }
+
+    def singleTypeAnnotation: String =
+      s"@${if (attribute) "xmlElement" else "xmlElement" }(required=${(!nillable).toString})"
+      //s"@${if (attribute) "xmlAttribute" else "xmlElement" }(required=${(!nillable).toString})"
+
+    def typeAnnotation: String = {
+      def stripPackage = if (baseTypeName.contains(".")) baseTypeName.substring(baseTypeName.lastIndexOf('.')+1) else baseTypeName
+
+      cardinality match {
+        case Single => singleTypeAnnotation
+        case Optional if baseTypeName == "String" => s"@xmlTypeAdapter(classOf[${stripPackage}OptionAdapter])"
+        case Optional => "" // TODO s"@xmlTypeAdapter(classOf[${stripPackage}OptionAdapter])"
+        case Multiple => "" // s"TODO: Seq[$singleTypeName]Annotation"
+      }
+    }
 
     def toParamName: String = makeParamName(name, typeSymbol match {
       case XsLongAttribute | XsAnyAttribute => false
@@ -82,7 +97,7 @@ trait Params extends Lookup {
       case _ => false
     })
 
-    def toTraitScalaCode(doMutable: Boolean): String = s"${if (doMutable) "var " else ""}$toParamName: $typeName"
+    def toTraitScalaCode(doMutable: Boolean): String = s"$typeAnnotation ${if (doMutable) "var " else ""}$toParamName: $typeName"
 
     def toScalaCode_possiblyMutable: String = toScalaCode(config.generateMutable)
 
