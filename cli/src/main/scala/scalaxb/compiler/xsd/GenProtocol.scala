@@ -135,6 +135,17 @@ import javax.xml.bind.annotation.adapters._
 
 // END JAXB ANNOTATIONS
 
+
+// JAXB ADAPTERS
+
+class StringOptionAdapter extends OptionAdapter[String](null, "")
+class OptionAdapter[A](nones: A*) extends XmlAdapter[A, Option[A]] {{
+  def marshal(v: Option[A]): A = v.getOrElse(nones(0))
+  def unmarshal(v: A) = if (nones contains v) None else Some(v)
+}}
+
+// END JAXB ADAPTERS
+
 /**
 usage:
 val obj = scalaxb.fromXML[{packageValueString}.Foo](node)
