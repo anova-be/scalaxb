@@ -49,7 +49,7 @@ class Driver extends Module { driver =>
 
   override def generate(xsd: Schema, part: String, context: Context, cnfg: Config) = {
     val pkg = packageName(xsd.targetNamespace, context)
-    Seq((pkg, Snippet(headerSnippet(pkg),
+    Seq((pkg, Snippet(headerSnippet(pkg), importsSnippet(),
       (new GenSource(xsd, context, cnfg)).run), part))
   }
 

@@ -126,12 +126,27 @@ class GenProtocol(val context: XsdContext, var config: Config) extends ContextPr
 {packageString}
 {importFutureString}
 
+
+// JAXB ANNOTATIONS
+
+import scala.annotation.meta.field
+import javax.xml.bind.annotation._
+import javax.xml.bind.annotation.adapters._
+
+// END JAXB ANNOTATIONS
+
 /**
 usage:
 val obj = scalaxb.fromXML[{packageValueString}.Foo](node)
 val document = scalaxb.toXML[{packageValueString}.Foo](obj, "foo", {packageValueString}.defaultScope)
 **/
-object `package` extends { buildDefaultProtocolName(name) } {{ }}
+object `package` extends { buildDefaultProtocolName(name) } {{
+  // JAXB ANNOTATION TYPES
+  type xmlElement     = XmlElement @field
+  type xmlAttribute   = XmlAttribute @field
+  type xmlTypeAdapter = XmlJavaTypeAdapter @field
+  // END JAXB ANNOTATION TYPES
+}}
 
 trait { buildDefaultProtocolName(name) } extends scalaxb.XMLStandardTypes {{
   val defaultScope = scalaxb.toScope({ if (scopes.isEmpty) "Nil: _*"
