@@ -1,3 +1,25 @@
+Anova fork
+==========
+The aim of this fork is to leverage scalaxb to generate **jaxb** scala case classes.
+This means adding annotations to the classes and parameters, and suppressing all scala.xml related code. 
+
+If we can make it generate 90% of our data model, a large (maintenance) effort is saved in creating our internal data model for our [politie-broker](https://github.com/anova-be/politie-broker) repository
+
+### Usage
+
+#### Core
+
+```
+$ cd cli
+$ sbt "project app" "publishM2"
+```
+
+#### Mvn plugin
+```
+$ cd mvn-scalaxb
+$ mvn clean install
+```
+
 scalaxb
 =======
 
