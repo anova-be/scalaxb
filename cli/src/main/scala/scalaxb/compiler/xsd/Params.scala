@@ -110,8 +110,30 @@ trait Params extends Lookup {
         case _ => ""
       })
 
+
+    def toScalaCode_defaultValue: String = typeDefaultValue
+
+    def typeDefaultValue: String = cardinality match {
+      case Single if typeSymbol == XsLongAttribute || typeSymbol == XsAnyAttribute => "Map.empty"
+      case Single => singleTypeDefaultValue
+      case Optional => "None"
+      case Multiple => "Nil"
+    }
+
+    def singleTypeDefaultValue: String = {
+      logger.info(s"default value for $baseTypeName")
+      if (nillable) "None"
+      else baseTypeName match {
+        case "String" => s""""""""
+        case "Int" => "0"
+        case dataRecord if dataRecord.toUpperCase.contains("DATARECORD") => "Map.empty" // TODO DataRecord.apply(new nl.politie.gms.poc.model.XmlGGKFamily())
+        case _ => s"new $baseTypeName()"
+      }
+    }
+
     def map(f: String => String): Param = this.copy(name = f(name))
   }
+
   
   def buildParam(decl: Decl): Param = decl match {
     case elem: ElemDecl => buildParam(elem)

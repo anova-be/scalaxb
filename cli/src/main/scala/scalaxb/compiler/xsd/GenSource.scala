@@ -273,8 +273,15 @@ class GenSource(val schema: SchemaDecl,
         }) :::
         (if (longAttribute) generateAccessors(attributes) else Nil)
 
+    def emptyConstructor: Option[String] = if (paramList.nonEmpty) {
+      Some(s"// only needed and accessed by JAXB\n\tdef this() = this(${paramList.map(_.toScalaCode_defaultValue).mkString(", ")})")
+    } else None
+
     // There should be a better way to flatten a List[(String, Option[String])] to List[String]
-    val accessors: List[String] = gettersAndIfMutableSetters.map{ p => List(List(p._1), p._2.toList)}.flatten.flatten
+    val accessors: List[String] = {
+      val gettersAndSetters = gettersAndIfMutableSetters.map { p => List(List(p._1), p._2.toList) }.flatten.flatten
+      emptyConstructor map { gettersAndSetters :+ _ } getOrElse gettersAndSetters
+    }
 
     logger.debug("makeCaseClassWithType: generateAccessors " + accessors)
 
@@ -290,7 +297,8 @@ class GenSource(val schema: SchemaDecl,
     def paramsString = if (hasSequenceParam) makeParamName(paramList.head.name, false) + ": " +
                                               paramList.head.singleTypeName + "*"
 
-                       else paramList.map(_.toScalaCode_possiblyMutable).mkString("," + newline + indent(1))
+                       else paramList.map(_.toScalaCode_possiblyMutable).mkString(newline + indent(1), "," + newline + indent(1), newline + indent(1))
+
 
     val simpleFromXml: Boolean = if (flatParticles.isEmpty && !effectiveMixed) true
       else (decl.content, primary) match {
