@@ -380,7 +380,7 @@ class GenSource(val schema: SchemaDecl,
     val defaultFormatSuperNames: List[String] = "scalaxb.ElemNameParser[" + fqn + "]" :: groups.map(g =>
       buildFormatterName(g.namespace, groupTypeName(g))).distinct
     
-    val caseClassCode = <source>{ buildComment(decl) }case class {localName}({paramsString}){extendString}{ if (accessors.size == 0) ""
+    val caseClassCode = <source>{ buildComment(decl) }{ buildAnnotations(localName) }case class {localName}({paramsString}){extendString}{ if (accessors.size == 0) ""
       else " {" + newline +
         indent(1) + accessors.mkString(newline + indent(1)) + newline +
         "}" + newline}
@@ -449,6 +449,8 @@ class GenSource(val schema: SchemaDecl,
       makeAnnotation(anno.annotation) + newline
     case _ => ""
   }
+
+  def buildAnnotations(localName: String) = s"""@XmlRootElement(name = "$localName")""" + "\n"
   
   // family is used to split sequences.
   def makeCompositor(compositor: HasParticle): Snippet = compositor match {
@@ -489,7 +491,7 @@ class GenSource(val schema: SchemaDecl,
     val superString = if (superNames.isEmpty) ""
       else " extends " + superNames.mkString(" with ")
     
-    Snippet(<source>{ buildComment(seq) }case class {localName}({paramsString}){superString}</source>,
+    Snippet(<source>{ buildComment(seq) }{ buildAnnotations(localName) }case class {localName}({paramsString}){superString}</source>,
       <source/>,
       <source>  trait Default{formatterName} extends scalaxb.XMLFormat[{fqn}] {{
     def reads(seq: scala.xml.NodeSeq, stack: List[scalaxb.ElemName]): Either[String, {fqn}] = Left("don't call me.")
@@ -561,7 +563,7 @@ class GenSource(val schema: SchemaDecl,
     val argsString = argList.mkString("," + newline + indent(3))  
     val attributeString = attributes.map(x => buildAttributeString(x)).mkString(newline + indent(2))
     
-    val caseClassCode = <source>{ buildComment(group) }case class {localName}({paramsString})</source>
+    val caseClassCode = <source>{ buildComment(group) }{ buildAnnotations(localName) }case class {localName}({paramsString})</source>
     val defaultFormats = <source>  trait Default{formatterName} extends scalaxb.AttributeGroupFormat[{fqn}] {{
     val targetNamespace: Option[String] = { quote(schema.targetNamespace) }
     
@@ -618,7 +620,7 @@ class GenSource(val schema: SchemaDecl,
 
     val traitCode = enums match {
       case Nil =>
-<source>case class {localName}()
+<source>{ buildAnnotations(localName) }case class {localName}()
 
 object {localName} {{
   def fromString(value: String, scope: scala.xml.NamespaceBinding): {localName} = {localName}()
