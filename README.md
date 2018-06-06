@@ -5,12 +5,16 @@ This means adding annotations to the classes and parameters, and suppressing all
 
 If we can make it generate 90% of our data model, a large (maintenance) effort is saved in creating our internal data model for our [politie-broker](https://github.com/anova-be/politie-broker) repository
 
+http://krasserm.blogspot.be/2012/02/using-jaxb-for-xml-and-json-apis-in.html
+http://caoilte.org/scala/2014/09/29/bending-jaxb-to-the-will-of-scala-1-of-2/
+http://blog.bdoughan.com/2010/11/jaxb-and-inheritance-using-substitution.html
+
 ### Usage
 
 #### Core
 
 ```
-$ cd cli
+$ cd .
 $ sbt "project app" "publishM2"
 ```
 
