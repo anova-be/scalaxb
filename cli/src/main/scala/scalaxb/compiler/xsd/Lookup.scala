@@ -145,14 +145,45 @@ trait Lookup extends ContextProcessor {
     case XsXMLFormat(decl: ComplexTypeDecl) => "scalaxb.XMLFormat[" + buildTypeName(decl, shortLocal) + "]"
     case XsXMLFormat(group: AttributeGroupDecl) => "scalaxb.XMLFormat[" + buildTypeName(group, shortLocal) + "]"
   }
+
+  /**
+    * Copied from buildTypeName(typeSymbol: XsTypeSymbol, shortLocal: Boolean = false)
+    */
+  def buildBaseTypeDefaultValue(typeSymbol: XsTypeSymbol, shortLocal: Boolean = false): String = typeSymbol match {
+    case AnyType(symbol) => "/* TODO convert this */ scalaxb.DataRecord[Any]"
+    case XsNillableAny   => "/* TODO convert this */ scalaxb.DataRecord[Option[Any]]"
+    case XsLongAll       => "/* TODO convert this */ Map.empty"
+    case XsLongAttribute => "/* TODO convert this */ Map.empty"
+    case XsAnyAttribute  => "/* TODO convert this */ Map.empty"
+    case XsDataRecord(ReferenceTypeSymbol(decl: ComplexTypeDecl)) if compositorWrapper.contains(decl) =>
+      compositorWrapper(decl) match {
+        case choice: ChoiceDecl => buildChoiceTypeDefaultValue(decl, choice, shortLocal)
+        case _ => "/* TODO convert this */ scalaxb.DataRecord[Any]"
+      }
+    case r: XsDataRecord => "/* TODO convert this */ scalaxb.DataRecord[Any]"
+    case XsMixed         => "/* TODO convert this */ scalaxb.DataRecord[Any]"
+    case symbol: BuiltInSimpleTypeSymbol => symbol.name match {
+      case "String" => s""""""""
+      case "Int" => "0"
+      case _ => s""""TODO provide default value for ${symbol.name}""""
+    }
+    case ReferenceTypeSymbol(decl: SimpleTypeDecl) => "/* TODO convert SimpleTypeDecl */ " + buildTypeName(decl, shortLocal) + ".apply"
+    case ReferenceTypeSymbol(decl: ComplexTypeDecl) => "/* convert ComplexTypeDecl */ new " + buildTypeName(decl, shortLocal) + "()"
+    case symbol: AttributeGroupSymbol => "/* TODO convert this AttributeGroupSymbol */" + buildTypeName(attributeGroups(symbol.namespace, symbol.name), shortLocal)
+    case XsXMLFormat(decl: ComplexTypeDecl) => "/* TODO convert this ComplexTypeDecl */ scalaxb.XMLFormat[" + buildTypeName(decl, shortLocal) + "]"
+    case XsXMLFormat(group: AttributeGroupDecl) => "/* TODO convert this AttributeGroupDecl */ scalaxb.XMLFormat[" + buildTypeName(group, shortLocal) + "]"
+  }
   
   def buildChoiceTypeName(decl: ComplexTypeDecl, choice: ChoiceDecl, shortLocal: Boolean): String
+  def buildChoiceTypeDefaultValue(decl: ComplexTypeDecl, choice: ChoiceDecl, shortLocal: Boolean): String
   
   def xmlFormatTypeName(decl: ComplexTypeDecl): String =
     "scalaxb.XMLFormat[" + buildTypeName(decl, false) + "]"
   
   def buildTypeName(decl: ComplexTypeDecl, shortLocal: Boolean): String =
     buildTypeName(packageName(decl, context), decl, shortLocal)
+  def buildTypeNameDefaultValue(decl: ComplexTypeDecl, shortLocal: Boolean): String =
+    buildTypeNameDefaultValue(packageName(decl, context), decl, shortLocal)
     
   def buildEnumTypeName(decl: SimpleTypeDecl, shortLocal: Boolean): String =
     buildTypeName(packageName(decl, context), decl, shortLocal)
@@ -160,6 +191,12 @@ trait Lookup extends ContextProcessor {
   def buildTypeName(pkg: Option[String], decl: Decl, shortLocal: Boolean): String = {
     if (!context.typeNames.contains(decl)) sys.error(pkg + ": Type name not found: " + decl.toString)
     
+    if (shortLocal && pkg == packageName(schema, context)) context.typeNames(decl)
+    else buildFullyQualifiedNameFromPackage(pkg, context.typeNames(decl))
+  }
+  def buildTypeNameDefaultValue(pkg: Option[String], decl: Decl, shortLocal: Boolean): String = {
+    if (!context.typeNames.contains(decl)) sys.error(pkg + ": Type name not found: " + decl.toString)
+
     if (shortLocal && pkg == packageName(schema, context)) context.typeNames(decl)
     else buildFullyQualifiedNameFromPackage(pkg, context.typeNames(decl))
   }

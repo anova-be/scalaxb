@@ -24,6 +24,10 @@ $ cd mvn-scalaxb
 $ mvn clean install
 ```
 
+### TODO
+
+- Clean generation of default values for parameters: remove comments, logging, ...
+
 scalaxb
 =======
 

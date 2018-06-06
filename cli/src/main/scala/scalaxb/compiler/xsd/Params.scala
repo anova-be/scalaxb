@@ -66,6 +66,10 @@ trait Params extends Lookup {
 
     def baseTypeName: String = buildTypeName(typeSymbol)
 
+    def shortBaseTypeName: String = buildTypeName(typeSymbol, true)
+
+    def baseTypeDefaultValue: String = buildBaseTypeDefaultValue(typeSymbol)
+
     def singleTypeName: String =
       if (nillable) "Option[" + baseTypeName + "]"
       else baseTypeName
@@ -76,18 +80,44 @@ trait Params extends Lookup {
       case Multiple => "Seq[" + singleTypeName + "]"
     }
 
-    def singleTypeAnnotation: String =
-      s"@${if (attribute) "xmlElement" else "xmlElement" }(required=${(!nillable).toString})"
-      //s"@${if (attribute) "xmlAttribute" else "xmlElement" }(required=${(!nillable).toString})"
+    def singleTypeAnnotation: String = {
+
+      val fieldName = s""""${name}""""
+
+      val typeInfo = typeSymbol match {
+        case ReferenceTypeSymbol(decl: ComplexTypeDecl) => s"/*fetched $decl - ${name}*/"
+        case ReferenceTypeSymbol(decl: SimpleTypeDecl)  => {
+          logger.info(s"fetched ReferenceTypeSymbol(decl: SimpleTypeDecl) -> decl = $decl")
+          logger.info(s" -> decl.name       = ${decl.name}")
+          logger.info(s" -> decl.content    = ${decl.content}")
+          logger.info(s" -> decl.family     = ${decl.family}")
+          logger.info(s" -> decl.annotation = ${decl.annotation}")
+          logger.info(s" -> typeName        = ${context.typeNames(decl)}")
+
+          decl.content match {
+            case SimpTypRestrictionDecl(base: XsTypeSymbol, facets: List[Facetable[_]]) => {
+              logger.info(s"fetched SimpTypRestrictionDecl($base)")
+              s"@xmlTypeAdapter(classOf[${context.typeNames(decl)}Adapter])"
+            }
+            case _ => s"/*fetched $decl*/"
+          }
+        }
+        case XsDataRecord(member) => s"@xmlElementRef"
+        case _ => s"/*${typeSymbol} - ${name}*/"
+      }
+
+      typeSymbol match {
+        case XsDataRecord(member) => s"@xmlElementRef"
+        case _ => s"""@${if (attribute) "xmlAttribute" else "xmlElement"}(required=${(!nillable).toString}, name=${fieldName}) ${typeInfo}"""
+      }
+    }
 
     def typeAnnotation: String = {
-      def stripPackage = if (baseTypeName.contains(".")) baseTypeName.substring(baseTypeName.lastIndexOf('.')+1) else baseTypeName
 
       cardinality match {
         case Single => singleTypeAnnotation
-        case Optional if baseTypeName == "String" => s"@xmlTypeAdapter(classOf[${stripPackage}OptionAdapter])"
-        case Optional => "" // TODO s"@xmlTypeAdapter(classOf[${stripPackage}OptionAdapter])"
-        case Multiple => "" // s"TODO: Seq[$singleTypeName]Annotation"
+        case Optional => s"@xmlTypeAdapter(classOf[${shortBaseTypeName}OptionAdapter])"
+        case Multiple => singleTypeAnnotation // s"TODO: Seq[$singleTypeName]Annotation"
       }
     }
 
@@ -121,14 +151,8 @@ trait Params extends Lookup {
     }
 
     def singleTypeDefaultValue: String = {
-      logger.info(s"default value for $baseTypeName")
-      if (nillable) "None"
-      else baseTypeName match {
-        case "String" => s""""""""
-        case "Int" => "0"
-        case dataRecord if dataRecord.toUpperCase.contains("DATARECORD") => "Map.empty" // TODO DataRecord.apply(new nl.politie.gms.poc.model.XmlGGKFamily())
-        case _ => s"new $baseTypeName()"
-      }
+      logger.info(s"default value for $baseTypeName: $typeSymbol = $baseTypeDefaultValue")
+      baseTypeDefaultValue
     }
 
     def map(f: String => String): Param = this.copy(name = f(name))
@@ -365,7 +389,54 @@ trait Params extends Lookup {
               (choice.particles forall { isOptionDescendant }) ) buildTypeName(decl, shortLocal)
           else "Any"
       }
-      if (buildOccurrence(choice).nillable) "scalaxb.DataRecord[Option[" + member + "]]"
-      else "scalaxb.DataRecord[" + member + "]"
+      if (buildOccurrence(choice).nillable) "Option[" + member + "]" // "scalaxb.DataRecord[Option[" + member + "]]"
+      else member // "scalaxb.DataRecord[" + member + "]"
+    }
+
+  def buildChoiceTypeDefaultValue(decl: ComplexTypeDecl, choice: ChoiceDecl,
+                          shortLocal: Boolean): String =
+    if (choice.particles.size < 1) "/* TODO convert this */ DataRecord.apply(Any)" // "scalaxb.DataRecord[Any]"
+    else {
+      val firstParticle = choice.particles.head
+
+      def particleType(particle: Particle) = particle match {
+        case elem: ElemDecl => Some(elem.typeSymbol)
+        case ref: ElemRef => Some(buildElement(ref).typeSymbol)
+        case _ => None
+      }
+
+      def sameType: Option[XsTypeSymbol] = {
+        val firstType = particleType(firstParticle)
+        if (firstType.isEmpty) None
+        else if (choice.particles forall { particleType(_) == firstType }) firstType
+        else None
+      }
+
+      def isOptionDescendant(particle: Particle): Boolean = particle match {
+        case elem: ElemDecl =>
+          elem.typeSymbol match {
+            case ReferenceTypeSymbol(decl: ComplexTypeDecl) => true
+            case _ => false
+          }
+        case ref: ElemRef =>
+          buildElement(ref).typeSymbol match {
+            case ReferenceTypeSymbol(decl: ComplexTypeDecl) => true
+            case _ => false
+          }
+        case c: ChoiceDecl => c.particles forall { isOptionDescendant }
+        case seq: SequenceDecl => true
+        case _ => false
+      }
+
+      val member = sameType match {
+        case Some(AnyType(x)) => "/* TODO convert this */ Any"
+        case Some(x) => "/* buildChoiceTypeDefaultValue#448 */" + buildBaseTypeDefaultValue(x) // buildTypeName(x)
+        case None =>
+          if (!containsForeignType(choice) &&
+            (choice.particles forall { isOptionDescendant }) ) "/* buildChoiceTypeDefaultValue#451 */" + buildTypeNameDefaultValue(decl, shortLocal) + ".apply"
+          else "Any"
+      }
+      if (buildOccurrence(choice).nillable) "None" /*"DataRecord.apply(None)"*/ // "scalaxb.DataRecord[Option[" + member + "]]"
+      else s"/* buildChoiceTypeDefaultValue#456 */ $member" /*"DataRecord.apply(new " + member + "())"*/ // "scalaxb.DataRecord[" + member + "]"
     }
 }

@@ -146,7 +146,7 @@ class GenSource(val schema: SchemaDecl,
       }
     }
 
-    val traitCode = <source>{ buildComment(decl) }trait {localName}{extendString} {{
+    val traitCode = <source>{ buildComment(decl) }class {localName}{extendString} {{
   {
   val vals = paramList.flatMap(paramEntries)
   vals.mkString(newline + indent(1))}
@@ -243,6 +243,7 @@ class GenSource(val schema: SchemaDecl,
     val list = if (longAttribute) List.concat[Decl](childElements, List(buildLongAttributeRef))
       else List.concat[Decl](childElements, attributes)
     val paramList = list map { buildParam }
+    val paramListNoAttributes = paramList.filterNot(_.name == ATTRS_PARAM)
     // val dependents = ((flatParticles flatMap { buildDependentType } collect {
     //   case ReferenceTypeSymbol(d: ComplexTypeDecl) if d != decl => d
     // }).toList ++ (attributes collect {
@@ -271,10 +272,10 @@ class GenSource(val schema: SchemaDecl,
           case Some(all: AllDecl) if longAll => generateAccessors(all)
           case _ => generateAccessors(paramList, splitSequences(decl))
         }) :::
-        (if (longAttribute) generateAccessors(attributes) else Nil)
+        (if (longAttribute) Nil /*generateAccessors(attributes)*/ else Nil)
 
     def emptyConstructor: Option[String] = if (paramList.nonEmpty) {
-      Some(s"// only needed and accessed by JAXB\n\tdef this() = this(${paramList.map(_.toScalaCode_defaultValue).mkString(", ")})")
+      Some(s"// only needed and accessed by JAXB\n\tdef this() = this(${(paramListNoAttributes ++ attributes.map(buildParam(_))).map(_.toScalaCode_defaultValue).mkString(", ")})")
     } else None
 
     // There should be a better way to flatten a List[(String, Option[String])] to List[String]
@@ -294,11 +295,28 @@ class GenSource(val schema: SchemaDecl,
     val hasSequenceParam = (paramList.size == 1) && (paramList.head.cardinality == Multiple) &&
       (!paramList.head.attribute) && (!effectiveMixed) && (!longAll) && (config.varArg)
     
-    def paramsString = if (hasSequenceParam) makeParamName(paramList.head.name, false) + ": " +
-                                              paramList.head.singleTypeName + "*"
+    def paramsString = {
+      if (hasSequenceParam) makeParamName(paramList.head.name, false) + ": " + paramList.head.singleTypeName + "*"
+      else if (paramList.isEmpty) ""
+      else paramListNoAttributes.map(_.toScalaCode_possiblyMutable).mkString(newline + indent(1), "," + newline + indent(1), ""/*newline + indent(1)*/)
+    }
 
-                       else paramList.map(_.toScalaCode_possiblyMutable).mkString(newline + indent(1), "," + newline + indent(1), newline + indent(1))
+    def attributeParamsString =
+      if (attributes.isEmpty) newline
+      else attributes.map(buildParam(_)).map(_.toScalaCode_possiblyMutable).mkString(newline + indent(1), "," + newline + indent(1), newline + indent(1))
 
+
+    def paramsStringList: List[String] = {
+      if (hasSequenceParam) List(makeParamName(paramList.head.name, false) + ": " + paramList.head.singleTypeName + "*")
+      else paramListNoAttributes.map(_.toScalaCode_possiblyMutable)
+    }
+
+    def attributeParamsStringList: List[String] = attributes.map(buildParam(_)).map(_.toScalaCode_possiblyMutable)
+
+    def combinedParameters = {
+      val combined = paramsStringList ++ attributeParamsStringList
+      if (combined.isEmpty) "" else combined.mkString(newline + indent(1), "," + newline + indent(1), newline + indent(1))
+    }
 
     val simpleFromXml: Boolean = if (flatParticles.isEmpty && !effectiveMixed) true
       else (decl.content, primary) match {
@@ -387,8 +405,8 @@ class GenSource(val schema: SchemaDecl,
     val groups = filterGroup(decl).distinct filter { g => primaryCompositor(g).particles.size > 0 }
     val defaultFormatSuperNames: List[String] = "scalaxb.ElemNameParser[" + fqn + "]" :: groups.map(g =>
       buildFormatterName(g.namespace, groupTypeName(g))).distinct
-    
-    val caseClassCode = <source>{ buildComment(decl) }{ buildAnnotations(localName) }case class {localName}({paramsString}){extendString}{ if (accessors.size == 0) ""
+
+    val caseClassCode = <source>{ buildComment(decl) }{ buildAnnotations(localName) }case class {localName}({combinedParameters}){extendString}{ if (accessors.size == 0) ""
       else " {" + newline +
         indent(1) + accessors.mkString(newline + indent(1)) + newline +
         "}" + newline}
@@ -458,7 +476,7 @@ class GenSource(val schema: SchemaDecl,
     case _ => ""
   }
 
-  def buildAnnotations(localName: String) = s"""@XmlRootElement(name = "$localName")""" + "\n"
+  def buildAnnotations(localName: String) = s"""@XmlRootElement(name = "$localName")""" + "\n" + "@XmlAccessorType(XmlAccessType.FIELD)" + "\n"
   
   // family is used to split sequences.
   def makeCompositor(compositor: HasParticle): Snippet = compositor match {
@@ -468,7 +486,19 @@ class GenSource(val schema: SchemaDecl,
       val superString = if (superNames.isEmpty) ""
         else " extends " + superNames.mkString(" with ")
       val localName = makeTypeName(context.compositorNames(compositor))
-      Snippet(<source>trait {localName}{superString}</source>)
+
+      val emptyConstructor = compositor match {
+        case ChoiceDecl(_, particles: List[Particle], minOccurs, maxOccurs, uniqueId) =>
+          particles.headOption match {
+            case Some(elem: ElemRef) => s"new ${elem.name}()" // TODO returning first known implementation here...
+            case _ => s"/* TODO implement empty constructor */ ???"
+          }
+        case _ => s"/* TODO implement empty constructor */ ???"
+      }
+
+      val accompaningObject = s"${newline}object $localName { def apply = { $emptyConstructor } }"
+
+      Snippet(<source>abstract class {localName}{superString}{accompaningObject}</source>)
   }
   
   def makeSequence(seq: SequenceDecl): Snippet = {    
@@ -598,6 +628,7 @@ class GenSource(val schema: SchemaDecl,
     val fqn = buildTypeName(decl, false)
     val formatterName = buildFormatterName(decl.namespace, localName)
     val enums = filterEnumeration(decl).distinct
+    val enums = filterEnumeration(decl).distinct // TODO add default or empty enum here?
 
     val baseSym : Option[XsTypeSymbol] = decl.content match {case SimpTypRestrictionDecl(base, _) => Some(base) case _ => None}
     val baseType: Option[String      ] = baseSym.map(buildTypeName(_))
@@ -619,6 +650,7 @@ class GenSource(val schema: SchemaDecl,
     val enumString = enums.map(makeEnum).mkString(newline)
     val enumListString = enums.map(enum => buildTypeName(localName, enum, true)).mkString(", ")
     val enumValuesString = s"lazy val values: Seq[$localName] = Seq($enumListString)"
+    val emptyConstructor = s"def apply: $localName = { values.head }" // TODO returning first value here, change to default value?
 
     def valueCode: String = baseSym match {
         case Some(XsQName) => """({ val (ns, localPart) = scalaxb.Helper.splitQName(value, scope)
@@ -634,14 +666,14 @@ object {localName} {{
   def fromString(value: String, scope: scala.xml.NamespaceBinding): {localName} = {localName}()
 }}</source>    
       case _ =>
-<source>trait {localName}
+<source>class {localName}
 
 object {localName} {{
-  def fromString(value: String, scope: scala.xml.NamespaceBinding)(implicit fmt: scalaxb.XMLFormat[{fqn}]): {localName} = fmt.reads(scala.xml.Text(value), Nil) match {{
-    case Right(x: {localName}) => x
-    case x => throw new RuntimeException(s"fromString returned unexpected value $x for input $value")
-  }}
+  def fromString(value: String) = values.find(_.toString == value).toRight(throw new RuntimeException(s"fromString could not find matching value for input $value in $values"))
+
   {enumValuesString}
+
+  {emptyConstructor}
 }}
 
 { enumString }</source>
