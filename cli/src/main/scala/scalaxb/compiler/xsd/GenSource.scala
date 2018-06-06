@@ -185,7 +185,7 @@ class GenSource(val schema: SchemaDecl,
     val compositorCodes: Seq[Snippet] = if (decl.abstractValue) compositors map { makeCompositor }
       else Nil
     
-    Snippet(Snippet(traitCode, <source/>, defaultFormats, makeImplicitValue(fqn, formatterName)) +:
+    Snippet(Snippet(traitCode, <source/>, Nil, makeImplicitValue(fqn, formatterName)) +:
       compositorCodes: _*)
   }
   
@@ -412,6 +412,8 @@ class GenSource(val schema: SchemaDecl,
         "}" + newline}
       </source>
 
+    def defaultOptionAdapter = <source>class {localName}OptionAdapter extends OptionAdapter[{localName}](null)</source>
+
     def defaultFormats = if (simpleFromXml) <source>  trait Default{formatterName} extends scalaxb.XMLFormat[{fqn}] with scalaxb.CanWriteChildNodes[{fqn}] {{
     val targetNamespace: Option[String] = { quote(schema.targetNamespace) }
     import scalaxb.ElemName._
@@ -462,7 +464,7 @@ class GenSource(val schema: SchemaDecl,
     
     val compositorCodes = compositors map { makeCompositor }
 
-    Snippet(Snippet(caseClassCode, <source/>, defaultFormats, makeImplicitValue(fqn, formatterName)) +:
+    Snippet(Snippet(caseClassCode, <source/>, defaultOptionAdapter, makeImplicitValue(fqn, formatterName)) +:
       compositorCodes: _*)
   }
     
@@ -580,7 +582,7 @@ class GenSource(val schema: SchemaDecl,
   }}</source>
     
     val compositorCodes = compositors map { makeCompositor }
-    Snippet(Snippet(Nil, Nil, defaultFormats, Nil) +:
+    Snippet(Snippet(Nil, Nil, Nil, Nil) +:
       compositorCodes: _*)
   }
   
@@ -627,8 +629,8 @@ class GenSource(val schema: SchemaDecl,
     val localName = buildTypeName(decl, true)
     val fqn = buildTypeName(decl, false)
     val formatterName = buildFormatterName(decl.namespace, localName)
-    val enums = filterEnumeration(decl).distinct
     val enums = filterEnumeration(decl).distinct // TODO add default or empty enum here?
+    val adapterName = buildXmlAdapterName(/*decl.namespace*/ None, localName)
 
     val baseSym : Option[XsTypeSymbol] = decl.content match {case SimpTypRestrictionDecl(base, _) => Some(base) case _ => None}
     val baseType: Option[String      ] = baseSym.map(buildTypeName(_))
@@ -678,28 +680,48 @@ object {localName} {{
 
 { enumString }</source>
     }  // match
-        
+
+
+    def defaultAdapters = {
+      <source>class {adapterName} extends XmlAdapter[String, {fqn}] {{
+
+  override def unmarshal(value: String): {fqn} = {fqn}.fromString(value).fold(
+    left => {{
+      println(s"could not unmarshal $value to {fqn}, returning default value")
+      {fqn}.apply
+    }},
+    right => right
+  )
+
+  override def marshal(value: {fqn}): String = value.toString
+}}</source>
+
+    }
+
+    def defaultFormats =
+      <source>  def build{formatterName} = new Default{formatterName} {{}}
+    trait Default{formatterName} extends scalaxb.XMLFormat[{fqn}] {{
+      val targetNamespace: Option[String] = { quote(schema.targetNamespace) }
+
+      def fromString(value: String, scope: scala.xml.NamespaceBinding): {fqn} = {valueCode} match {{
+  { enums.map(e => makeCaseEntry(e)) }
+      }}
+
+      def reads(seq: scala.xml.NodeSeq, stack: List[scalaxb.ElemName]): Either[String, {fqn}] = seq match {{
+        case elem: scala.xml.Elem => Right(fromString(elem.text, elem.scope))
+        case _ => Right(fromString(seq.text, scala.xml.TopScope))
+      }}
+
+      def writes(__obj: {fqn}, __namespace: Option[String], __elementLabel: Option[String],
+          __scope: scala.xml.NamespaceBinding, __typeAttribute: Boolean): scala.xml.NodeSeq =
+        scala.xml.Elem(scalaxb.Helper.getPrefix(__namespace, __scope).orNull,
+          __elementLabel getOrElse {{ sys.error("missing element label.") }},
+          scala.xml.Null, __scope, true, scala.xml.Text(__obj.toString))
+    }}</source>
+
     Snippet(traitCode,
       Nil,
-      <source>  def build{formatterName} = new Default{formatterName} {{}}
-  trait Default{formatterName} extends scalaxb.XMLFormat[{fqn}] {{
-    val targetNamespace: Option[String] = { quote(schema.targetNamespace) }
-    
-    def fromString(value: String, scope: scala.xml.NamespaceBinding): {fqn} = {valueCode} match {{
-{ enums.map(e => makeCaseEntry(e)) }
-    }}
-
-    def reads(seq: scala.xml.NodeSeq, stack: List[scalaxb.ElemName]): Either[String, {fqn}] = seq match {{
-      case elem: scala.xml.Elem => Right(fromString(elem.text, elem.scope))
-      case _ => Right(fromString(seq.text, scala.xml.TopScope))
-    }}
-    
-    def writes(__obj: {fqn}, __namespace: Option[String], __elementLabel: Option[String],
-        __scope: scala.xml.NamespaceBinding, __typeAttribute: Boolean): scala.xml.NodeSeq =
-      scala.xml.Elem(scalaxb.Helper.getPrefix(__namespace, __scope).orNull, 
-        __elementLabel getOrElse {{ sys.error("missing element label.") }},
-        scala.xml.Null, __scope, true, scala.xml.Text(__obj.toString))
-  }}</source>,
+      defaultAdapters,
       makeImplicitValue(fqn, formatterName))
   }
 

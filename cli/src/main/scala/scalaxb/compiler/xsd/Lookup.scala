@@ -238,6 +238,12 @@ trait Lookup extends ContextProcessor {
     pkg.filter(_ != '.').capitalize + "_" + name + "Format"
   }
 
+  def buildXmlAdapterName(namespace: Option[String], name: String, prefixWithPackage: Boolean = false): String = {
+    val pkg = packageName(namespace, context) getOrElse {""}
+    val adapterName = name + "Adapter"
+    if (prefixWithPackage) pkg.filter(_ != '.').capitalize + adapterName else adapterName
+  }
+
   def baseType(decl: SimpleTypeDecl): XsTypeSymbol = decl.content match {
     case SimpTypRestrictionDecl(base, _) => base
     case SimpTypListDecl(itemType) => itemType
