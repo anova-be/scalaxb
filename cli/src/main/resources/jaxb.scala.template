@@ -1,0 +1,41 @@
+package jaxb
+
+import scala.annotation.meta.field
+import javax.xml.bind.annotation._
+import javax.xml.bind.annotation.adapters._
+
+import scala.language.postfixOps
+import scala.language.implicitConversions
+import scala.language.existentials
+
+object `package` {
+  import annotation.implicitNotFound
+
+  // JAXB ANNOTATION TYPES
+
+  type xmlElement     = XmlElement @field
+  type xmlAttribute   = XmlAttribute @field
+  type xmlTypeAdapter = XmlJavaTypeAdapter @field
+  type xmlElementRef  = XmlElementRef @field
+
+  // END JAXB ANNOTATION TYPES
+
+  // JAXB ADAPTERS
+
+  class StringOptionAdapter extends OptionAdapter[String](null, "")
+
+  class OptionAdapter[A](nones: A*) extends XmlAdapter[A, Option[A]] {
+    override def marshal(v: Option[A]): A = v.getOrElse(nones(0))
+    override def unmarshal(v: A) = if (nones contains v) None else Some(v)
+  }
+
+  /*
+  class LongAdapter extends XmlAdapter[String, Long] {
+    override def marshal(value: Long): String = if (Option(value).isEmpty) return null else value.toString
+    override def unmarshal(value: String) = new java.lang.Long(value)
+  }
+  */
+
+  // END JAXB ADAPTERS
+}
+

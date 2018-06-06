@@ -40,7 +40,8 @@ object Snippet {
       snippets flatMap {_.elemToTypeClauses})
 }
 
-case class Snippet(definition: Seq[Node] = Nil,
+case class Snippet(
+  definition: Seq[Node] = Nil,
   companion: Seq[Node] = Nil,
   defaultFormats: Seq[Node] = Nil,
   implicitValue: Seq[Node] = Nil,
@@ -200,11 +201,12 @@ trait Module {
 { pkg map { "package " + _ } getOrElse {""} }</source>)
 
   def importsSnippet(): Snippet = Snippet(
-    <source>
-      import scala.annotation.meta.field
-      import javax.xml.bind.annotation._
-      import javax.xml.bind.annotation.adapters._
-    </source>)
+    <source>import jaxb._
+
+import scala.annotation.meta.field
+
+import javax.xml.bind.annotation._
+import javax.xml.bind.annotation.adapters._</source>)
 
   def processReaders[From, To](files: Seq[From], config: Config)
      (implicit ev: CanBeRawSchema[From, RawSchema], evTo: CanBeWriter[To]): (CompileSource[From], List[To]) = {
