@@ -8,7 +8,7 @@
     <version>7</version>
   </parent>
 
-  <groupId>org.scalaxb</groupId>
+  <groupId>be.anova</groupId>
   <artifactId>scalaxb-maven-plugin</artifactId>
   <version>local-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
@@ -65,7 +65,7 @@
   <dependencies>
 
     <dependency>
-      <groupId>org.scalaxb</groupId>
+      <groupId>be.anova</groupId>
       <artifactId>scalaxb_${binary.version}</artifactId>
       <version>${project.version}</version>
     </dependency>

@@ -3,7 +3,7 @@ import Common._
 
 lazy val commonSettings = Seq(
     version in ThisBuild := "local-SNAPSHOT",
-    organization in ThisBuild := "org.scalaxb",
+    organization in ThisBuild := "be.anova",
     homepage in ThisBuild := Some(url("http://scalaxb.org")),
     licenses in ThisBuild := Seq("MIT License" -> url("https://github.com/eed3si9n/scalaxb/blob/master/LICENSE")),
     description in ThisBuild := """scalaxb is an XML data-binding tool for Scala that supports W3C XML Schema (xsd) and wsdl.""",
