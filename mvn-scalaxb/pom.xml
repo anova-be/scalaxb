@@ -10,7 +10,7 @@
 
   <groupId>be.anova</groupId>
   <artifactId>scalaxb-maven-plugin</artifactId>
-  <version>local-SNAPSHOT</version>
+  <version>1.0.0</version>
   <packaging>maven-plugin</packaging>
 
   <name>scalaxb Maven Plugin</name>

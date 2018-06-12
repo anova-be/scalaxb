@@ -2,7 +2,7 @@ import Dependencies._
 import Common._
 
 lazy val commonSettings = Seq(
-    version in ThisBuild := "local-SNAPSHOT",
+    version in ThisBuild := "1.0.0",
     organization in ThisBuild := "be.anova",
     homepage in ThisBuild := Some(url("http://scalaxb.org")),
     licenses in ThisBuild := Seq("MIT License" -> url("https://github.com/eed3si9n/scalaxb/blob/master/LICENSE")),
