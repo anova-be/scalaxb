@@ -112,13 +112,10 @@ trait Params extends Lookup {
       }
     }
 
-    def typeAnnotation: String = {
-
-      cardinality match {
-        case Single => singleTypeAnnotation
-        case Optional => s"@xmlTypeAdapter(classOf[${shortBaseTypeName}OptionAdapter])"
-        case Multiple => singleTypeAnnotation // s"TODO: Seq[$singleTypeName]Annotation"
-      }
+    def typeAnnotation: String = cardinality match {
+      case Single => singleTypeAnnotation
+      case Optional => s"@xmlTypeAdapter(classOf[${shortBaseTypeName}OptionAdapter])"
+      case Multiple => singleTypeAnnotation // s"TODO: Seq[$singleTypeName]Annotation"
     }
 
     def toParamName: String = makeParamName(name, typeSymbol match {
@@ -189,8 +186,9 @@ trait Params extends Lookup {
   }
   
   def buildParam(attr: AttributeDecl): Param = {
-    val name = if (!attr.global) attr.name
-      else makePrefix(attr.namespace, context) + attr.name
+    // uncomment for original behaviour (attr parameters are prefixed)
+    // val name = if (!attr.global) attr.name else makePrefix(attr.namespace, context) + attr.name
+    val name = attr.name
     
     val retval = Param(attr.namespace, name, attr.typeSymbol, toCardinality(attr), false, false, false, true)
     logger.debug("buildParam:  " + retval.toString)
