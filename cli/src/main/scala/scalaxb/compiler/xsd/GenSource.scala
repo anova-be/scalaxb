@@ -659,6 +659,7 @@ class GenSource(val schema: SchemaDecl,
     val formatterName = buildFormatterName(decl.namespace, localName)
     val enums = filterEnumeration(decl).distinct // TODO add default or empty enum here?
     val adapterName = buildXmlAdapterName(/*decl.namespace*/ None, localName)
+    val optionalAdapterName = buildXmlAdapterName(/*decl.namespace*/ None, localName+"Option")
 
     val baseSym : Option[XsTypeSymbol] = decl.content match {case SimpTypRestrictionDecl(base, _) => Some(base) case _ => None}
     val baseType: Option[String      ] = baseSym.map(buildTypeName(_))
@@ -711,7 +712,8 @@ object {localName} {{
 
 
     def defaultAdapters = {
-      <source>class {adapterName} extends XmlAdapter[String, {fqn}] {{
+      <source>class {optionalAdapterName} extends OptionAdapter[{fqn}](null)
+class {adapterName} extends XmlAdapter[String, {fqn}] {{
 
   override def unmarshal(value: String): {fqn} = {fqn}.fromString(value).fold(
     left => {{
