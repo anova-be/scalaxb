@@ -65,6 +65,34 @@ class GenSource(val schema: SchemaDecl,
     Snippet(snippets: _*)
   }
 
+  def listElementNames: Set[String] = {
+
+    def addTypeName(remaining: List[TypeDecl], accumulator: Set[String]): Set[String] = remaining match {
+      case Nil => accumulator
+      case head :: tail => head match {
+
+        case decl: ComplexTypeDecl if !context.duplicatedTypes.contains((schema, decl)) =>
+
+          if (context.baseToSubs.contains(decl)) {
+
+            addTypeName(tail, accumulator + buildTypeName(decl, true))
+
+            if (!decl.abstractValue) addTypeName(tail, accumulator + makeProtectedTypeName(schema.targetNamespace, decl, context))
+            else addTypeName(tail, accumulator)
+          }
+          else addTypeName(tail, accumulator + buildTypeName(decl, true))
+
+        case decl: SimpleTypeDecl if !context.duplicatedTypes.contains((schema, decl)) =>
+          if (containsEnumeration(decl)) addTypeName(tail, accumulator + buildTypeName(decl, true))
+          else addTypeName(tail, accumulator)
+
+        case _ =>addTypeName(tail, accumulator)
+      }
+    }
+
+    addTypeName(schema.typeList, Set())
+  }
+
   def makeElemToTypeClause(name: String, elem: ElemDecl): Snippet = {
     val src = <source>{indent(3)}case (Some("{name}"), {elem.namespace.map(ns => s"""Some("$ns") | None""").getOrElse("None")}) => Some(DataRecord(ns, key, xsns, xstype, fromXML[{buildTypeName(elem.typeSymbol)}](elem)))</source>
     Snippet(elemToTypeClauses = Seq(src))

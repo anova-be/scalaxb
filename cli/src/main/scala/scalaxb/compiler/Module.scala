@@ -353,6 +353,23 @@ import javax.xml.bind.annotation.adapters._</source>)
       output
     }
 
+    def processJaxbIndex[A](xs: List[(Importable, A)]) = {
+      val pkg = packageName(cs.firstNamespace, cs.context)
+      val output = implicitly[CanBeWriter[To]].newInstance(pkg, "jaxb.index")
+      val out = implicitly[CanBeWriter[To]].toWriter(output)
+
+      val allElementNames = xs flatMap { case (importable, file) =>
+        listAllElementNames(cs.schemas(importable), cs.context, config)
+      }
+      try {
+        out.print(allElementNames.mkString("\n"))
+      } finally {
+        out.flush()
+        out.close()
+      }
+      output
+    }
+
     processContext(cs.context, cs.schemas.valuesIterator.toSeq, config)
     cs.schemas.valuesIterator.toSeq foreach { schema =>
       processSchema(schema, cs.context, config)
@@ -360,8 +377,8 @@ import javax.xml.bind.annotation.adapters._</source>)
     processImportables(cs.importables.toList) :::
     processImportables(cs.additionalImportables.toList) :::
     List(processProtocol) :::
-    (if (config.generateRuntime) generateRuntimeFiles[To](cs.context, config)
-     else Nil)
+    (if (config.generateRuntime) generateRuntimeFiles[To](cs.context, config) else Nil) :::
+    List(processJaxbIndex(cs.importables.toList))
   }
 
   def generateFromResource[To](packageName: Option[String], fileName: String, resourcePath: String, substitution: Option[(String, String)] = None)
@@ -381,6 +398,8 @@ import javax.xml.bind.annotation.adapters._</source>)
 
   // returns a seq of package name, snippet, and file name part tuple
   def generate(schema: Schema, part: String, context: Context, config: Config): Seq[(Option[String], Snippet, String)]
+
+  def listAllElementNames(schema: Schema, context: Context, config: Config): Set[String]
 
   def generateProtocol(snippet: Snippet,
     context: Context, config: Config): Seq[Node]

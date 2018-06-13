@@ -53,6 +53,9 @@ class Driver extends Module { driver =>
       (new GenSource(xsd, context, cnfg)).run), part))
   }
 
+  override def listAllElementNames(schema: SchemaDecl, context: Context, config: Config): Set[String] =
+    new GenSource(schema, context, config).listElementNames
+
   override def generateProtocol(snippet: Snippet,
       context: Context, cnfg: Config): Seq[Node] =
     (new GenProtocol(context, cnfg)).generateProtocol(snippet, Seq())

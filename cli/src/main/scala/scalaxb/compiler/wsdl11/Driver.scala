@@ -121,6 +121,8 @@ class Driver extends Module { driver =>
     xsdgenerated ++ wsdlgenerated
   }
 
+  override def listAllElementNames(schema: WsdlPair, context: Context, config: Config): Set[String] = ???
+
   override def toImportable(alocation: URI, rawschema: RawSchema): Importable = new Importable {
     import scalaxb.compiler.Module.FileExtension
     import scalaxb.compiler.xsd.{ImportDecl}
