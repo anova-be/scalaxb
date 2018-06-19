@@ -34,7 +34,7 @@ class GenSource(val schema: SchemaDecl,
   
   val topElems = schema.topElems
   val elemList = schema.elemList
-  val MIXED_PARAM = "mixed"
+  val MIXED_PARAM = "content"
 
   def run: Snippet = {
     logger.debug("run")

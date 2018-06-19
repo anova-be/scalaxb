@@ -137,7 +137,7 @@ trait Lookup extends ContextProcessor {
         case _ => "scalaxb.DataRecord[Any]"
       }
     case r: XsDataRecord => "scalaxb.DataRecord[Any]"
-    case XsMixed         => "scalaxb.DataRecord[Any]"
+    case XsMixed         => "String"// "scalaxb.DataRecord[Any]"
     case symbol: BuiltInSimpleTypeSymbol => symbol.name
     case ReferenceTypeSymbol(decl: SimpleTypeDecl) => buildTypeName(decl, shortLocal)
     case ReferenceTypeSymbol(decl: ComplexTypeDecl) => buildTypeName(decl, shortLocal)
