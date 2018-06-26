@@ -506,7 +506,7 @@ class GenSource(val schema: SchemaDecl,
     case _ => ""
   }
 
-  def buildAnnotations(localName: String) = s"""@XmlRootElement(name = "$localName")""" + "\n" + "@XmlAccessorType(XmlAccessType.FIELD)" + "\n"
+  def buildAnnotations(localName: String) = s"""@JacksonXmlRootElement(localName = "$localName")""" + "\n"
   
   // family is used to split sequences.
   def makeCompositor(compositor: HasParticle): Snippet = compositor match {

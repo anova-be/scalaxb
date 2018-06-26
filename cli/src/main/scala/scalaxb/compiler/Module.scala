@@ -203,10 +203,8 @@ trait Module {
   def importsSnippet(): Snippet = Snippet(
     <source>import jaxb._
 
-import scala.annotation.meta.field
-
-import javax.xml.bind.annotation._
-import javax.xml.bind.annotation.adapters._</source>)
+import com.fasterxml.jackson.annotation._
+import com.fasterxml.jackson.dataformat.xml.annotation._</source>)
 
   def processReaders[From, To](files: Seq[From], config: Config)
      (implicit ev: CanBeRawSchema[From, RawSchema], evTo: CanBeWriter[To]): (CompileSource[From], List[To]) = {

@@ -102,20 +102,20 @@ trait Params extends Lookup {
             case _ => s"/*fetched $decl*/"
           }
         }
-        case XsDataRecord(member) => s"@xmlElementRef"
+        case XsDataRecord(member) => s"@xmlElementRef" + s" /* $member */"
         case _ => s"/*${typeSymbol} - ${name}*/"
       }
 
       typeSymbol match {
-        case XsDataRecord(member) => s"@xmlElementRef"
-        case _ => s"""@${if (attribute) "xmlAttribute" else "xmlElement"}(required=${(!nillable).toString}, name=${fieldName}) ${typeInfo}"""
+        case XsDataRecord(member) => s"@xmlElementRef" + s" /* $member */"
+        case _ => s"""@JacksonXmlProperty(localName=${fieldName}${if (attribute) ", isAttribute = true" else ""})${if (!nillable) " @JsonProperty(required = true)" else "" } ${typeInfo}"""
       }
     }
 
     def typeAnnotation: String = cardinality match {
       case Single => singleTypeAnnotation
-      case Optional => s"@xmlTypeAdapter(classOf[${shortBaseTypeName}OptionAdapter])"
-      case Multiple => singleTypeAnnotation // s"TODO: Seq[$singleTypeName]Annotation"
+      case Optional => singleTypeAnnotation + "/*Optional*/" // s"@xmlTypeAdapter(classOf[${shortBaseTypeName}OptionAdapter])"
+      case Multiple => singleTypeAnnotation + "/*Multiple*/" // s"TODO: Seq[$singleTypeName]Annotation"
     }
 
     def toParamName: String = makeParamName(name, typeSymbol match {
