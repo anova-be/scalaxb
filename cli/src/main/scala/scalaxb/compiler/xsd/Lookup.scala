@@ -149,7 +149,7 @@ trait Lookup extends ContextProcessor {
   /**
     * Copied from buildTypeName(typeSymbol: XsTypeSymbol, shortLocal: Boolean = false)
     */
-  def buildBaseTypeDefaultValue(typeSymbol: XsTypeSymbol, shortLocal: Boolean = false): String = typeSymbol match {
+  def buildBaseTypeDefaultValue(typeSymbol: XsTypeSymbol, shortLocal: Boolean = false, nillable: Boolean): String = typeSymbol match {
     case AnyType(symbol) => "/* TODO convert this */ scalaxb.DataRecord[Any]"
     case XsNillableAny   => "/* TODO convert this */ scalaxb.DataRecord[Option[Any]]"
     case XsLongAll       => "/* TODO convert this */ Map.empty"
@@ -168,7 +168,8 @@ trait Lookup extends ContextProcessor {
       case _ => s""""TODO provide default value for ${symbol.name}""""
     }
     case ReferenceTypeSymbol(decl: SimpleTypeDecl) => "/* TODO convert SimpleTypeDecl */ " + buildTypeName(decl, shortLocal) + ".apply"
-    case ReferenceTypeSymbol(decl: ComplexTypeDecl) => "/* convert ComplexTypeDecl */ new " + buildTypeName(decl, shortLocal) + "()"
+    case ReferenceTypeSymbol(decl: ComplexTypeDecl) =>
+      "/* convert ComplexTypeDecl */" + { if (nillable) " None" else " new " + buildTypeName(decl, shortLocal) + "()" }
     case symbol: AttributeGroupSymbol => "/* TODO convert this AttributeGroupSymbol */" + buildTypeName(attributeGroups(symbol.namespace, symbol.name), shortLocal)
     case XsXMLFormat(decl: ComplexTypeDecl) => "/* TODO convert this ComplexTypeDecl */ scalaxb.XMLFormat[" + buildTypeName(decl, shortLocal) + "]"
     case XsXMLFormat(group: AttributeGroupDecl) => "/* TODO convert this AttributeGroupDecl */ scalaxb.XMLFormat[" + buildTypeName(group, shortLocal) + "]"

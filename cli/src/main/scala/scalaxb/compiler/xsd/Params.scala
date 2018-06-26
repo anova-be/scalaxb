@@ -68,7 +68,7 @@ trait Params extends Lookup {
 
     def shortBaseTypeName: String = buildTypeName(typeSymbol, true)
 
-    def baseTypeDefaultValue: String = buildBaseTypeDefaultValue(typeSymbol)
+    def baseTypeDefaultValue: String = buildBaseTypeDefaultValue(typeSymbol, false, nillable)
 
     def singleTypeName: String =
       if (nillable) "Option[" + baseTypeName + "]"
@@ -391,8 +391,7 @@ trait Params extends Lookup {
       else member // "scalaxb.DataRecord[" + member + "]"
     }
 
-  def buildChoiceTypeDefaultValue(decl: ComplexTypeDecl, choice: ChoiceDecl,
-                          shortLocal: Boolean): String =
+  def buildChoiceTypeDefaultValue(decl: ComplexTypeDecl, choice: ChoiceDecl, shortLocal: Boolean): String =
     if (choice.particles.size < 1) "/* TODO convert this */ DataRecord.apply(Any)" // "scalaxb.DataRecord[Any]"
     else {
       val firstParticle = choice.particles.head
@@ -428,7 +427,7 @@ trait Params extends Lookup {
 
       val member = sameType match {
         case Some(AnyType(x)) => "/* TODO convert this */ Any"
-        case Some(x) => "/* buildChoiceTypeDefaultValue#448 */" + buildBaseTypeDefaultValue(x) // buildTypeName(x)
+        case Some(x) => "/* buildChoiceTypeDefaultValue#448 */" + buildBaseTypeDefaultValue(x, shortLocal, false) // buildTypeName(x)
         case None =>
           if (!containsForeignType(choice) &&
             (choice.particles forall { isOptionDescendant }) ) "/* buildChoiceTypeDefaultValue#451 */" + buildTypeNameDefaultValue(decl, shortLocal) + ".apply"

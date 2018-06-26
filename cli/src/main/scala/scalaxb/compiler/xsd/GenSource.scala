@@ -985,7 +985,15 @@ class {adapterName} extends XmlAdapter[String, {fqn}] {{
         }
 
       case choice: ChoiceDecl =>
-        List(buildCompositorRef(choice, index))
+        // don't build compositor ref, but return choice options as parameters
+        choice.particles flatMap {
+          case elem: ElemDecl           => Some(elem)
+          case ref: ElemRef             => Some(buildElement(ref).copy(nillable = Some(true))) // override nillable for choice options
+          case other                    =>
+            logger.debug(s"particle $other not supported! ")
+            None
+        }
+      //List(buildCompositorRef(choice, index))
     }          
   }
   
